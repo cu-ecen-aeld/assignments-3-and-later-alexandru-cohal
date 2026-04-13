@@ -1,3 +1,8 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/wait.h>
 #include "systemcalls.h"
 
 /**
@@ -16,6 +21,12 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+
+    if (system(cmd) == -1)
+    {
+    	// Child process not possible to create
+    	return false;
+    }
 
     return true;
 }
@@ -45,9 +56,7 @@ bool do_exec(int count, ...)
         command[i] = va_arg(args, char *);
     }
     command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
+    va_end(args);
 
 /*
  * TODO:
@@ -58,8 +67,48 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    
+    if (command[0][0] != '/') 
+    {
+        // The full path from command[0] is not an absolute path
+	return false;
+    }
 
-    va_end(args);
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        // Child process not possible to create
+    	return false;
+    }
+    else
+    {
+        if (pid == 0)
+	{
+	    // Child process
+	    if (execv(command[0], command) == -1)
+	    {
+	        // An error occurred
+	        return false;
+	    }
+	}
+	else
+	{
+	    	// Parent process
+	    	int wstatus;
+	    	
+		wait(&wstatus);
+		if (wstatus == -1) 
+		{
+		    // An error occurred
+		    return false;
+		} 
+	        if ((WIFEXITED(wstatus)) && (WEXITSTATUS(wstatus) != 0)) 
+	        {
+	            // The child terminated normally but the return status is different than 0
+		    return false;
+	        }
+	}
+    }
 
     return true;
 }
@@ -83,7 +132,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
     command[count] = command[count];
-
+    va_end(args);
 
 /*
  * TODO
@@ -93,7 +142,58 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
-    va_end(args);
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    
+    if (command[0][0] != '/') 
+    {
+        // The full path from command[0] is not an absolute path
+	return false;
+    }
+
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        // Child process not possible to create
+    	return false;
+    }
+    else
+    {
+        if (pid == 0)
+	{
+	    // Child process
+	    if (dup2(fd, 1) == -1) 
+	    {
+	        // An error occurred while mapping the stdout (1) to the file descriptor fd
+		return false;
+	    }
+	    close(fd);
+	    
+	    if (execv(command[0], command) == -1)
+	    {
+	        // An error occurred
+	        return false;
+	    }
+	}
+	else
+	{
+	    // Parent process
+	    close(fd);
+	    	
+	    int wstatus;
+	    	
+	    wait(&wstatus);
+	    if (wstatus == -1) 
+	    {
+		// An error occurred
+		return false;
+	    } 
+	    if ((WIFEXITED(wstatus)) && (WEXITSTATUS(wstatus) != 0)) 
+	    {
+	        // The child terminated normally but the return status is different than 0
+		return false;
+	    }
+	}
+    }
 
     return true;
 }
