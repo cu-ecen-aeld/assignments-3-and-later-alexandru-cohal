@@ -23,7 +23,7 @@ fi
 numfiles=$(find "$filesdir" -type f | wc -l)
 
 # Get the number of search string occurrences.
-nummatchinglines=$(grep -d recurse -o -F "$searchstr" "$filesdir" | wc -l)
+nummatchinglines=$(grep -r -o -F "$searchstr" "$filesdir" | wc -l)
 
 # Print the results.
 echo "The number of files are ${numfiles} and the number of matching lines are ${nummatchinglines}"
