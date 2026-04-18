@@ -8,7 +8,7 @@ set -u
 OUTDIR=/tmp/aeld
 KERNEL_REPO=git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 KERNEL_VERSION=v5.15.163
-BUSYBOX_REPO=git://busybox.net/busybox.git
+BUSYBOX_REPO=https://git.busybox.net/busybox/
 BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
@@ -45,7 +45,7 @@ cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
 then
 	echo "---> Cloning busybox..."
-	# While running locally, had to switch to https://git.busybox.net/busybox/ , as the first option was throwing the error "fatal: read error: connection reset by peer"
+	# Replaced git://busybox.net/busybox.git with https://git.busybox.net/busybox/ , as the first option was throwing the error "fatal: read error: connection reset by peer"
 	# Added --branch ${BUSYBOX_VERSION} as the full-test was throwing the error "pathspec '1_33_1' did not match any file(s) known to git" when doing the git checkout
 	git clone ${BUSYBOX_REPO} --depth 1 --single-branch --branch ${BUSYBOX_VERSION}
 	echo "---> Checking out busybox..."
