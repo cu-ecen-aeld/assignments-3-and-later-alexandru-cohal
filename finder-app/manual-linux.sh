@@ -8,6 +8,7 @@ set -u
 OUTDIR=/tmp/aeld
 KERNEL_REPO=git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 KERNEL_VERSION=v5.15.163
+BUSYBOX_REPO=git://busybox.net/busybox.git
 BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
@@ -23,35 +24,6 @@ else
 fi
 
 mkdir -p ${OUTDIR}
-
-cd "$OUTDIR"
-if [ ! -d "${OUTDIR}/linux-stable" ]; then
-	#Clone only if the repository does not exist.
-	echo "CLONING GIT LINUX STABLE VERSION ${KERNEL_VERSION} IN ${OUTDIR}"
-	git clone ${KERNEL_REPO} --depth 1 --single-branch --branch ${KERNEL_VERSION}
-fi
-if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-	cd linux-stable
-	echo "Checking out version ${KERNEL_VERSION}"
-	git checkout ${KERNEL_VERSION}
-
-    	# TODO: Add your kernel build steps here
-	    	echo "---> Building the kernel..."
-	    	# Clean
-		make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- mrproper
-	    	# Build and set up default config
-	    	make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- defconfig
-	    	# Build kernel image for booting with QEMU
-	    	make -j8 ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- all
-	    	# Build module
-	    	# Step skipped because the modules generated with the default kernel build are too large to fit in the initramfs with default memory
-	    	# make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- modules
-	    	# Build devicetree
-	    	make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- dtbs
-	    	cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/Image	    	    	
-fi
-
-echo "Adding the Image in outdir"
 
 echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
@@ -72,10 +44,11 @@ fi
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
 then
-	# Replaced git://busybox.net/busybox.git with https://git.busybox.net/busybox/ , as the first option was throwing the error "fatal: read error: connection reset by peer"
+	echo "---> Cloning busybox..."
+	# While running locally, had to switch to https://git.busybox.net/busybox/ , as the first option was throwing the error "fatal: read error: connection reset by peer"
 	# Added --branch ${BUSYBOX_VERSION} as the full-test was throwing the error "pathspec '1_33_1' did not match any file(s) known to git" when doing the git checkout
-	git clone https://git.busybox.net/busybox/ --depth 1 --branch ${BUSYBOX_VERSION}
-	echo "cloning done"
+	git clone ${BUSYBOX_REPO} --depth 1 --single-branch --branch ${BUSYBOX_VERSION}
+	echo "---> Checking out busybox..."
 	cd busybox
 	git checkout ${BUSYBOX_VERSION}
 	
@@ -84,16 +57,14 @@ then
     	echo "-----> make distclean..."
 	make distclean
 	echo "-----> make defconfig..."
-	make defconfig
-	echo "-----> make..."
-	make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
-    	
+	make defconfig 	
 else
     	cd busybox
 fi
 
 # TODO: Make and install busybox
 	echo "---> Making and installing busybox..."
+	make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
 	make CONFIG_PREFIX="${OUTDIR}/rootfs" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} install
 	
 echo "Library dependencies"
@@ -133,6 +104,35 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 	sed -i 's/..\/conf\/assignment.txt/conf\/assignment.txt/g' "${OUTDIR}/rootfs/home/finder-test.sh"
 	echo "---> Copying the autorun-qemu script..."
 	cp $FINDER_APP_DIR/autorun-qemu.sh "${OUTDIR}/rootfs/home"
+
+cd "$OUTDIR"
+if [ ! -d "${OUTDIR}/linux-stable" ]; then
+	#Clone only if the repository does not exist.
+	echo "CLONING GIT LINUX STABLE VERSION ${KERNEL_VERSION} IN ${OUTDIR}"
+	git clone ${KERNEL_REPO} --depth 1 --single-branch --branch ${KERNEL_VERSION}
+fi
+if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
+	cd linux-stable
+	echo "Checking out version ${KERNEL_VERSION}"
+	git checkout ${KERNEL_VERSION}
+
+    	# TODO: Add your kernel build steps here
+	    	echo "---> Building the kernel..."
+	    	# Clean
+		make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- mrproper
+	    	# Build and set up default config
+	    	make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- defconfig
+	    	# Build kernel image for booting with QEMU
+	    	make -j8 ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- all
+	    	# Build module
+	    	# Step skipped because the modules generated with the default kernel build are too large to fit in the initramfs with default memory
+	    	# make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- modules
+	    	# Build devicetree
+	    	make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- dtbs
+	    	
+	    	echo "Adding the Image in outdir"
+	    	cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/Image	    	    	
+fi
 
 # TODO: Chown the root directory
 	echo "---> Chowning the root directory..."
