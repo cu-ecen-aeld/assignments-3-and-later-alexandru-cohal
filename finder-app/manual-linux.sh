@@ -45,7 +45,7 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
 	    	make -j8 ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- all
 	    	# Build module
 	    	# Step skipped because the modules generated with the default kernel build are too large to fit in the initramfs with default memory
-	    	make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- modules
+	    	# make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- modules
 	    	# Build devicetree
 	    	make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- dtbs
 	    	cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/Image	    	    	
