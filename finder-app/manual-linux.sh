@@ -13,7 +13,7 @@ BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
 CROSS_COMPILE=aarch64-none-linux-gnu-
-LIBC_TOOLCHAIN=~/Documents/LinuxSysProgramAndIntrodBuildroot/arm-gnu-toolchain/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc
+SYSROOT=$(${CROSS_COMPILE}gcc --print-sysroot)
 
 if [ $# -lt 1 ]
 then
@@ -41,6 +41,7 @@ fi
 	mkdir -p usr/bin usr/lib usr/sbin
 	mkdir -p var/log
 
+# Get and configure busybox
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
 then
@@ -67,6 +68,7 @@ fi
 	make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
 	make CONFIG_PREFIX="${OUTDIR}/rootfs" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} install
 	
+# Get library dependencies
 echo "Library dependencies"
 # Added cd command for moving to the rootfs directory
 cd "${OUTDIR}/rootfs"
@@ -75,10 +77,11 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
 	echo "---> Adding library dependencies to rootfs..."
-	cp ${LIBC_TOOLCHAIN}/lib/ld-linux-aarch64.so.1 "${OUTDIR}/rootfs/lib"
-	cp ${LIBC_TOOLCHAIN}/lib64/libm.so.6 "${OUTDIR}/rootfs/lib64"
-	cp ${LIBC_TOOLCHAIN}/lib64/libresolv.so.2 "${OUTDIR}/rootfs/lib64"
-	cp ${LIBC_TOOLCHAIN}/lib64/libc.so.6 "${OUTDIR}/rootfs/lib64"
+	
+	cp ${SYSROOT}/lib/ld-linux-aarch64.so.1 "${OUTDIR}/rootfs/lib"
+	cp ${SYSROOT}/lib64/libm.so.6 "${OUTDIR}/rootfs/lib64"
+	cp ${SYSROOT}/lib64/libresolv.so.2 "${OUTDIR}/rootfs/lib64"
+	cp ${SYSROOT}/lib64/libc.so.6 "${OUTDIR}/rootfs/lib64"
 
 # TODO: Make device nodes
 	echo "---> Making device nodes..."
@@ -105,6 +108,16 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 	echo "---> Copying the autorun-qemu script..."
 	cp $FINDER_APP_DIR/autorun-qemu.sh "${OUTDIR}/rootfs/home"
 
+# TODO: Chown the root directory
+	echo "---> Chowning the root directory..."
+	cd ${OUTDIR}/rootfs
+	find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
+
+# TODO: Create initramfs.cpio.gz
+	echo "---> Creating initramfs.cpio.gz..."
+	gzip -f ${OUTDIR}/initramfs.cpio
+	
+# Building the kernel
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/linux-stable" ]; then
 	#Clone only if the repository does not exist.
@@ -133,12 +146,3 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
 	    	echo "Adding the Image in outdir"
 	    	cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/Image	    	    	
 fi
-
-# TODO: Chown the root directory
-	echo "---> Chowning the root directory..."
-	cd ${OUTDIR}/rootfs
-	find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
-
-# TODO: Create initramfs.cpio.gz
-	echo "---> Creating initramfs.cpio.gz..."
-	gzip -f ${OUTDIR}/initramfs.cpio
