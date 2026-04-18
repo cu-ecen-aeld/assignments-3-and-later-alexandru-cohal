@@ -73,7 +73,8 @@ cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
 then
 	# Replaced git://busybox.net/busybox.git with https://git.busybox.net/busybox/ , as the first option was throwing the error "fatal: read error: connection reset by peer"
-	git clone https://git.busybox.net/busybox/ --depth 1
+	# Added --branch ${BUSYBOX_VERSION} as the full-test was throwing the error "pathspec '1_33_1' did not match any file(s) known to git" when doing the git checkout
+	git clone https://git.busybox.net/busybox/ --depth 1 --branch ${BUSYBOX_VERSION}
 	echo "cloning done"
 	cd busybox
 	git checkout ${BUSYBOX_VERSION}
