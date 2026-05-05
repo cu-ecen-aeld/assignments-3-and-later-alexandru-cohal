@@ -7,10 +7,10 @@ case "$1" in
 		;;
 	stop)
 		echo "Stopping aesdsocket"
-		start-stop-daemon -K -n aesdsocket --signal SIGTERM
+		start-stop-daemon -K -n aesdsocket --signal TERM
 		;;
 	*)
 		echo "Usage: $0 {start|stop}"
+		exit 1
 		;;
-	exit 1
 esac
